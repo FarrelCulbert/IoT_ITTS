@@ -1,3 +1,5 @@
+//komunikasi i2c
+
 #include <Wire.h>
 
 int ledPin = 13;  // Pin LED built-in pada Arduino Nano
