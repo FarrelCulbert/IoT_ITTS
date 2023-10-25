@@ -1,0 +1,26 @@
+#include <Wire.h>
+
+int ledPin = 13;  // Pin LED built-in pada Arduino Nano
+
+void setup() {
+  Wire.begin(9);  // Menginisialisasi slave address dengan nilai 9
+  Wire.onReceive(receiveEvent);
+  pinMode(ledPin, OUTPUT);
+}
+
+void loop() {
+  delay(100);
+}
+
+void receiveEvent() {
+  String command = "";
+  while (Wire.available()) {
+    char c = Wire.read();
+    command += c;
+  }
+  if (command == "nyala") {
+    digitalWrite(ledPin, HIGH);
+  } else if (command == "mati") {
+    digitalWrite(ledPin, LOW);
+  }
+}
