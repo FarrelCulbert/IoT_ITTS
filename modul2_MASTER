@@ -1,0 +1,81 @@
+#include <Arduino.h>
+#if defined(ESP32)
+#include <WiFi.h>
+#elif defined(ESP8266)
+#include <ESP8266WiFi.h>
+#endif
+#include <Wire.h>
+#include <Firebase_ESP_Client.h>
+// Provide the token generation process info.
+#include "addons/TokenHelper.h"
+// Provide the RTDB payload printing info and other helper functions.
+#include "addons/RTDBHelper.h"
+// Insert your network credentials
+#define WIFI_SSID "mboh"
+#define WIFI_PASSWORD "hanyahuruf"
+// Insert Firebase project API Key
+#define API_KEY "AIzaSyDVvRVAum2UC5tQ4O-zGyzfWrCI0jbhrhA"
+// Insert RTDB URL
+#define DATABASE_URL "https://nodemcu-8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+
+// Define Firebase Data object
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+unsigned long sendDataPrevMillis = 0;
+String stringValue = "";
+
+void setup() {
+  Serial.begin(9600);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(300);
+  }
+  Serial.println();
+  Serial.print("Connected with IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.println();
+
+  /* Assign the api key (required) */
+  config.api_key = API_KEY;
+
+  /* Assign the RTDB URL (required) */
+  config.database_url = DATABASE_URL;
+
+  /* Sign up */
+  if (Firebase.signUp(&config, &auth, "", "")) {
+    Serial.println("ok");
+  } else {
+    Serial.printf("%s\n", config.signer.signupError.message.c_str());
+  }
+
+  /* Assign the callback function for the long running token generation task */
+  config.token_status_callback = tokenStatusCallback; // see addons/TokenHelper.h
+
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+
+  Wire.begin();
+}
+
+void loop() {
+  if (Firebase.ready() && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)) {
+    sendDataPrevMillis = millis();
+
+    if (Firebase.RTDB.getString(&fbdo, "ledState")) {
+      if (fbdo.dataType() == "string") {
+        stringValue = fbdo.stringData();
+
+        // Kirim data I2C ke slave (Arduino Nano)
+        Wire.beginTransmission(9);  // Alamat I2C slave (sesuaikan dengan slave Anda)
+        Wire.write(stringValue.c_str());  // Kirim data "nyala" atau "mati"
+        Wire.endTransmission();
+        Serial.println(stringValue);
+      }
+    } else {
+      Serial.println(fbdo.errorReason());
+    }
+  }
+}
