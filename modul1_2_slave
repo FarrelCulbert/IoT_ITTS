@@ -1,0 +1,33 @@
+#include <Wire.h>
+
+float a;
+char b[3] = "aaa";
+String thisString;
+
+void setup() {
+  // put your setup code here, to run once:
+  Wire.begin(8);
+  Wire.onReceive(receiveEvent);
+  Wire.onRequest(requestEvent);
+  Serial.begin(115200);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  String thisString = String(13);
+  a = random (100);
+  dtostrf(a, 4, 2, b);
+  delay(100);
+}
+
+void receiveEvent (int howMany){
+  while ( 0 < Wire.available()){
+    char c = Wire.read();
+    Serial.print(c);
+  }
+  Serial.println();
+}
+
+void requestEvent(){
+  Wire.write(b);
+}
