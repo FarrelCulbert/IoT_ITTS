@@ -6,11 +6,11 @@ float CM = 0; // Variabel untuk menyimpan jarak dalam centimeter
 int ledPin = 13;
 
 void setup() {
-  Serial.begin(9600); // Inisialisasi komunikasi serial dengan kecepatan 9600 baud
+  Serial.begin(115200); // Inisialisasi komunikasi serial dengan kecepatan 9600 baud
   pinMode(trigPin, OUTPUT); // Mengatur pin trigger sebagai output
   pinMode(echoPin, INPUT); // Mengatur pin echo sebagai input
   Wire.begin(8); // Memulai koneksi I2C dengan alamat slave 8
-  Wire.onRequest(requestEvent); 
+  Wire.onRequest(requestEvent);  
   Wire.onReceive(receiveEvent);
   pinMode(ledPin, OUTPUT); // Mengatur pin LED sebagai output
 }
@@ -43,7 +43,12 @@ void receiveEvent() {
     char c = Wire.read();
     command += c;
   }
-  Serial.println(command);
-  
+  int receivedValue = command.toInt();
+  Serial.println(receivedValue);
 
+  if (receivedValue < 50){
+    digitalWrite(ledPin, HIGH);
+  }else {
+    digitalWrite(ledPin, LOW);
+  }
 }
