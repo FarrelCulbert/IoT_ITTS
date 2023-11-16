@@ -79,7 +79,7 @@ void loop() {
   while (Wire.available()) {
     Wire.readBytes((char*)&CM, sizeof(CM)); // Membaca data dari slave dan menyimpannya ke variabel CM
     String formattedData = String(CM, 2); // Format data dengan dua angka dibelakang koma
-    Serial.print("Distance in centimeters: ");
+    Serial.print("Jarak dari Slave: ");
     Serial.println(formattedData); // Menampilkan nilai jarak dalam centimeter dengan dua angka dibelakang koma ke Serial Monitor
     
     // Kirim data ke Realtime Database Firebase
@@ -99,6 +99,7 @@ void loop() {
         Wire.beginTransmission(8);
         Wire.write(stringValue.c_str());
         Wire.endTransmission();
+        Serial.print("jarak dari RTDB = ");
         Serial.println(stringValue); 
       } 
     } 
