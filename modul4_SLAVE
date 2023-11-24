@@ -1,0 +1,56 @@
+#include <Wire.h>
+
+const int trigPin = 6; // Pin Trigger
+const int echoPin = 7; // Pin Echo
+float CM = 0; // Variabel untuk menyimpan jarak dalam centimeter
+int ledPin = 13;
+
+void setup() {
+  Serial.begin(115200); // Inisialisasi komunikasi serial dengan kecepatan 9600 baud
+  pinMode(trigPin, OUTPUT); // Mengatur pin trigger sebagai output
+  pinMode(echoPin, INPUT); // Mengatur pin echo sebagai input
+  Wire.begin(8); // Memulai koneksi I2C dengan alamat slave 8
+  Wire.onRequest(requestEvent);  
+  Wire.onReceive(receiveEvent);
+  pinMode(ledPin, OUTPUT); // Mengatur pin LED sebagai output
+}
+
+void loop() {
+  // Mengirimkan sinyal ultrasonik
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  // Membaca durasi sinyal echo untuk menghitung jarak
+  long duration = pulseIn(echoPin, HIGH);
+  
+  // Menghitung jarak dalam centimeter
+  CM = duration * 0.034 / 2; // Kecepatan suara adalah 34.000 cm/s atau 0,034 cm/μs
+  Serial.print("Jarak = ");
+  Serial.println(CM);
+  delay(1000); // Delay selama 1 detik sebelum membaca data lagi
+}
+
+void requestEvent() {
+  // Mengirimkan nilai CM dalam bentuk byte array saat diminta oleh master
+  Wire.write((byte*)&CM, sizeof(CM));
+}
+
+void receiveEvent() {
+  String command = "";
+  while (Wire.available()) {
+    char c = Wire.read();
+    command += c;
+  }
+  int receivedValue = command.toInt();
+
+  Serial.println("Jarak dari RTDB = " + String(receivedValue)); 
+
+  if (receivedValue < 50) {
+    digitalWrite(ledPin, HIGH);
+  } else {
+    digitalWrite(ledPin, LOW);
+  }
+}
