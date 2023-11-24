@@ -1,0 +1,123 @@
+#include <Wire.h>
+#include <Arduino.h> 
+#if defined(ESP32) 
+  #include <WiFi.h> 
+#elif defined(ESP8266) 
+  #include <ESP8266WiFi.h> 
+#endif 
+#include <Firebase_ESP_Client.h> 
+int count; 
+
+//Provide the token generation process info. 
+#include "addons/TokenHelper.h" 
+//Provide the RTDB payload printing info and other helper functions. 
+#include "addons/RTDBHelper.h" 
+// Insert your network credentials 
+#define WIFI_SSID "tes"
+#define WIFI_PASSWORD "12345678"
+// Insert Firebase project API Key
+#define API_KEY "AIzaSyD0_dKitBTR1YeSKMExjcAjve0box3LZEI"
+// Insert RTDB URL
+#define DATABASE_URL "https://kodular-87272-default-rtdb.firebaseio.com/" 
+//Define Firebase Data object 
+FirebaseData fbdo; 
+FirebaseAuth auth; 
+FirebaseConfig config; 
+unsigned long sendDataPrevMillis = 0; 
+
+int intValue; 
+float floatValue;
+String stringValue= "";
+String kondisi = "";
+
+float CM = 0;
+bool signupOK = false;
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+  Wire.begin(8); //SDA = D1, SCL = D2
+
+  Serial.begin(9600); 
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD); 
+  Serial.print("Connecting to Wi-Fi"); 
+  while (WiFi.status() != WL_CONNECTED) { 
+    Serial.print("."); 
+    delay(300); 
+  } 
+  Serial.println(); 
+  Serial.print("Connected with IP: "); 
+  Serial.println(WiFi.localIP()); 
+  Serial.println(); 
+  /* Assign the api key (required) */ 
+  config.api_key = API_KEY; 
+  /* Assign the RTDB URL (required) */ 
+  config.database_url = DATABASE_URL; 
+  /* Sign up */ 
+  if (Firebase.signUp(&config, &auth, "", "")) { 
+    Serial.println("ok"); 
+    signupOK = true; 
+  } 
+  else { 
+    Serial.printf("%s\n", config.signer.signupError.message.c_str()); 
+  } 
+ 
+  /* Assign the callback function for the long running token generation task */ 
+  config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h 
+ 
+  Firebase.begin(&config, &auth); 
+  Firebase.reconnectWiFi(true); 
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  Wire.requestFrom(8, sizeof(float)); // Meminta data dari slave dengan alamat 8 dan panjang data sebesar ukuran variabel float
+
+  while (Wire.available()) {
+    Wire.readBytes((char*)&CM, sizeof(CM)); // Membaca data dari slave dan menyimpannya ke variabel CM
+    String formattedData = String(CM, 2); // Format data dengan dua angka dibelakang koma
+    Serial.print("Jarak dari Slave: ");
+    Serial.println(formattedData); // Menampilkan nilai jarak dalam centimeter dengan dua angka dibelakang koma ke Serial Monitor
+    
+    if (formattedData.toFloat() < 50) {
+      kondisi = "nyala";
+    } else {
+      kondisi = "mati";
+    }
+    
+    // Kirim data ke Realtime Database Firebase
+    if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)) { 
+      sendDataPrevMillis = millis(); 
+      
+      if (Firebase.RTDB.setString(&fbdo, "farrel", formattedData)) { 
+        Serial.println("Data sent successfully"); 
+      } else { 
+        Serial.println("Failed to send data"); 
+      } 
+
+      if (Firebase.RTDB.getFloat(&fbdo, "farrel")) { 
+        if (fbdo.dataType() == "string") { 
+          stringValue = fbdo.stringData(); 
+
+          Wire.beginTransmission(8);
+          Wire.write(stringValue.c_str());
+          Wire.endTransmission();
+          
+          Serial.print("jarak dari RTDB = ");
+          Serial.println(stringValue); 
+        } 
+      } else { 
+        Serial.println(fbdo.errorReason()); 
+      } 
+    }
+
+    // Write a Float number on the database path test/float 
+    if (Firebase.RTDB.setString(&fbdo, "info_lampu", kondisi)) { 
+      Serial.println("Data sent successfully"); 
+    } else { 
+      Serial.println("Failed to send data"); 
+    } 
+  }
+
+  delay(5000);
+}
